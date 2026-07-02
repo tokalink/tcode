@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Terminal Code AI Assistant",
   "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "tcode": "./dist/index.js"
   },
