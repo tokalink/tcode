@@ -424,7 +424,6 @@ program
                     });
                     let fullResponse = '';
                     let firstChunk = true;
-                    let inThink = false;
                     for await (const part of result.fullStream) {
                         if (part.type === 'text-delta') {
                             if (firstChunk) {
@@ -432,40 +431,8 @@ program
                                 console.log();
                                 firstChunk = false;
                             }
-                            let text = part.textDelta;
-                            fullResponse += text;
-                            if (config.show_thinking !== false) {
-                                let parts = text.split(/(<think>|<\/think>)/);
-                                for (const p of parts) {
-                                    if (p === '<think>') {
-                                        inThink = true;
-                                        process.stdout.write(c.dim + '<think>');
-                                    }
-                                    else if (p === '</think>') {
-                                        inThink = false;
-                                        process.stdout.write('</think>' + c.reset);
-                                    }
-                                    else {
-                                        process.stdout.write(p);
-                                    }
-                                }
-                            }
-                            else {
-                                let parts = text.split(/(<think>|<\/think>)/);
-                                for (const p of parts) {
-                                    if (p === '<think>') {
-                                        inThink = true;
-                                        spinner.start('AI Sedang Berpikir...');
-                                    }
-                                    else if (p === '</think>') {
-                                        inThink = false;
-                                        spinner.stop();
-                                    }
-                                    else if (!inThink) {
-                                        process.stdout.write(p);
-                                    }
-                                }
-                            }
+                            fullResponse += part.textDelta;
+                            process.stdout.write(part.textDelta);
                         }
                         else if (part.type === 'tool-call') {
                             let details = part.toolName;
