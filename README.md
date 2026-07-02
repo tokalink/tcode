@@ -34,6 +34,20 @@ tcode chat
 ```
 Sistem akan memandu Anda untuk membuat file konfigurasi jika baru pertama kali menjalankannya.
 
+### ⚠️ Troubleshooting Instalasi (Khusus Linux)
+Jika instalasi berhasil tetapi muncul pesan error `tcode: command not found` di Linux, itu berarti direktori global NPM tidak ada di dalam jangkauan `$PATH` sistem Anda.
+
+Ada dua cara mudah untuk mengatasinya (Pilih salah satu):
+**Opsi A:** Lakukan instalasi ulang menggunakan akses Root/Sudo:
+```bash
+sudo npm install -g git+https://github.com/tokalink/tcode.git
+```
+**Opsi B:** Tambahkan folder lokal NPM ke `$PATH` Anda (tanpa akses root):
+```bash
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
 ---
 
 ## ⚙️ Konfigurasi (`tcode.config.json`)
