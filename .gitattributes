@@ -1,0 +1,7 @@
+* text=auto
+
+# Pastikan file source code dan dist selalu menggunakan LF (Linux line endings)
+# agar sheerbang #!/usr/bin/env node tidak rusak oleh CRLF (\r) di Linux/Mac.
+*.ts text eol=lf
+*.js text eol=lf
+*.json text eol=lf
