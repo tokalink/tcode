@@ -483,8 +483,19 @@ program
                         }
                     }
                     spinner.stop();
-                    console.log('\n');
                     const responseMessages = await result.responseMessages;
+                    if (fullResponse.trim() === '') {
+                        const hasTools = responseMessages.some((m) => m.role === 'tool' || (m.role === 'assistant' && m.content && Array.isArray(m.content) && m.content.some((c) => c.type === 'tool-call')));
+                        if (hasTools) {
+                            console.log(`${c.green}✅ Aksi selesai dieksekusi.${c.reset}\n`);
+                        }
+                        else {
+                            console.log(`${c.dim}(Tidak ada respons)${c.reset}\n`);
+                        }
+                    }
+                    else {
+                        console.log('\n');
+                    }
                     if (responseMessages && responseMessages.length > 0) {
                         messages.push(...responseMessages);
                     }
