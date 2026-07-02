@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { loadConfig } from './config';
 
 const execAsync = promisify(exec);
 
@@ -151,6 +152,36 @@ export const agentTools = {
         const stderr = error.stderr ? error.stderr.toString().slice(0, 1000) : '';
         const stdout = error.stdout ? error.stdout.toString().slice(0, 1000) : '';
         return `❌ Command failed: ${command}\n${stderr || stdout || error.message}`;
+      }
+    }
+  }),
+
+  // ── Tool 5: Save Knowledge ──
+  save_knowledge: tool({
+    description: 'Gunakan ini untuk menyimpan ringkasan hasil belajarmu ke dalam Knowledge Base (Otak AI) agar kamu bisa mengingatnya di sesi obrolan berikutnya. Otomatis tersimpan ke .tcode/knowledge/',
+    parameters: z.object({
+      topic: z.string().describe('Nama topik singkat tanpa ekstensi file. Contoh: laravel-13, setup-react, error-typescript'),
+      content: z.string().describe('Isi catatan atau pengetahuan yang berhasil dipelajari, diformat rapi dengan Markdown.')
+    }),
+    execute: async ({ topic, content }) => {
+      try {
+        const config = loadConfig();
+        const baseDir = config.knowledge_path 
+          ? path.resolve(process.cwd(), config.knowledge_path) 
+          : path.join(process.cwd(), '.tcode', 'knowledge');
+        
+        if (!fs.existsSync(baseDir)) {
+          fs.mkdirSync(baseDir, { recursive: true });
+        }
+        
+        // Bersihkan nama topik dari karakter aneh
+        const safeTopic = topic.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+        const filePath = path.join(baseDir, `${safeTopic}.md`);
+        
+        fs.writeFileSync(filePath, content, 'utf-8');
+        return `✅ Pengetahuan berhasil disimpan ke Otak (Knowledge Base) di ${filePath}. Saya tidak akan melupakannya!`;
+      } catch (error: any) {
+        return `❌ Gagal menyimpan pengetahuan: ${error.message}`;
       }
     }
   }),

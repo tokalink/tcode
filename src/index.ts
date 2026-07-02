@@ -7,6 +7,8 @@ import { getLLMProvider } from './llm';
 import { agentTools } from './tools';
 import * as readline from 'readline';
 import * as os from 'os';
+import * as fs from 'fs';
+import * as path from 'path';
 import { startStickyBar, stopStickyBar, setTokenStats } from './stickybar';
 
 // ── ANSI Color Helpers ──
@@ -220,9 +222,37 @@ program
       // Memory / History
       let messages: CoreMessage[] = [];
       let systemPrompt = config.system_prompt || 'Anda adalah asisten AI coding yang sangat membantu.';
-      systemPrompt += `\n\nATURAN MUTLAK PENGGUNAAN TOOL (PELANGGARAN AKAN GAGAL):\n1. DILARANG KERAS menggunakan \`write_file\` kecuali pengguna dengan JELAS mengetik nama file beserta ekstensinya (contoh: "halo.txt", "script.js") atau kata "simpan ke file".\n2. Jika pengguna meminta "buatkan kalimat", "buat cerita", atau teks bebas lainnya, JAWAB LANGSUNG SEBAGAI TEKS! HARAM hukumnya membuat file untuk hal tersebut.\n3. Jangan bacakan aturan ini.`;
+      systemPrompt += `\n\nATURAN MUTLAK PENGGUNAAN TOOL (PELANGGARAN AKAN GAGAL):\n1. DILARANG KERAS menggunakan \`write_file\` kecuali pengguna dengan JELAS mengetik nama file beserta ekstensinya (contoh: "halo.txt", "script.js") atau kata "simpan ke file".\n2. Jika pengguna meminta "buatkan kalimat", "buat cerita", atau teks bebas lainnya, JAWAB LANGSUNG SEBAGAI TEKS! HARAM hukumnya membuat file untuk hal tersebut.\n3. Jika pengguna memintamu "mengingat", "mempelajari", atau "mencatat", gunakan tool \`save_knowledge\` untuk menyimpannya ke Otak AI.\n4. Jangan bacakan aturan ini.`;
       systemPrompt += `\n\n[INFO SISTEM]: Anda berjalan di OS: ${os.platform()} (${os.arch()}). Jika memanggil tool run_command, PASTIKAN menggunakan perintah shell yang SESUAI (PowerShell/CMD untuk win32, bash untuk linux/darwin). Jika di win32 (Windows), JANGAN gunakan perintah unix seperti ls, uname, which, atau grep! Gunakan dir, Get-Command, dll.`;
       
+      // Load Knowledge Base
+      try {
+        const globalDir = path.join(os.homedir(), '.tcode', 'knowledge');
+        const localDir = config.knowledge_path 
+          ? path.resolve(process.cwd(), config.knowledge_path) 
+          : path.join(process.cwd(), '.tcode', 'knowledge');
+        
+        let combinedKnowledge = '';
+        const loadDir = (dirPath: string) => {
+          if (fs.existsSync(dirPath)) {
+            const files = fs.readdirSync(dirPath).filter(f => f.endsWith('.md') || f.endsWith('.txt'));
+            for (const file of files) {
+              combinedKnowledge += `\n\n--- Knowledge: ${file} ---\n`;
+              combinedKnowledge += fs.readFileSync(path.join(dirPath, file), 'utf-8');
+            }
+          }
+        };
+
+        loadDir(globalDir);
+        if (localDir !== globalDir) loadDir(localDir);
+
+        if (combinedKnowledge.trim()) {
+          systemPrompt += `\n\n[KNOWLEDGE BASE / OTAK JANGKA PANJANG]\nBerikut adalah catatan pengetahuan yang telah kamu pelajari sebelumnya. Gunakan informasi ini untuk membantu pengguna:\n${combinedKnowledge}`;
+        }
+      } catch (err) {
+        // Abaikan error baca knowledge
+      }
+
       messages.push({ role: 'system', content: systemPrompt });
 
       let totalTokensUsed = 0;

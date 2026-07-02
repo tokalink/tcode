@@ -9,8 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/index.ts",
-    "dev": "ts-node src/index.ts",
-    "prepare": "tsc"
+    "dev": "ts-node src/index.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^0.0.39",

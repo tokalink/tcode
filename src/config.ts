@@ -14,6 +14,7 @@ export interface TCodeConfig {
   active_model: string;
   models: Record<string, ModelConfig>;
   system_prompt?: string;
+  knowledge_path?: string; // Path ke direktori knowledge lokal/kustom
   max_context_messages?: number; // Limit context window to save tokens
   show_thinking?: boolean;
 }
