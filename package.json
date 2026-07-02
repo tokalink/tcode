@@ -1,0 +1,28 @@
+{
+  "name": "tcode",
+  "version": "1.0.0",
+  "description": "Terminal Code AI Assistant",
+  "main": "dist/index.js",
+  "bin": {
+    "tcode": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^0.0.39",
+    "@ai-sdk/google": "^0.0.35",
+    "@ai-sdk/openai": "^0.0.40",
+    "ai": "^3.2.39",
+    "commander": "^12.1.0",
+    "ollama-ai-provider": "^0.15.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  }
+}
