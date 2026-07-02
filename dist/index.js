@@ -483,14 +483,16 @@ program
                         }
                     }
                     spinner.stop();
+                    spinner.stop();
                     const responseMessages = await result.responseMessages;
-                    if (fullResponse.trim() === '') {
+                    const visibleText = fullResponse.replace(/<think>[\s\S]*?<\/think>\n?/g, '').trim();
+                    if (visibleText === '') {
                         const hasTools = responseMessages.some((m) => m.role === 'tool' || (m.role === 'assistant' && m.content && Array.isArray(m.content) && m.content.some((c) => c.type === 'tool-call')));
                         if (hasTools) {
                             console.log(`${c.green}✅ Aksi selesai dieksekusi.${c.reset}\n`);
                         }
                         else {
-                            console.log(`${c.dim}(Tidak ada respons)${c.reset}\n`);
+                            console.log(`${c.dim}(AI selesai berpikir namun tidak mengeluarkan teks jawaban)${c.reset}\n`);
                         }
                     }
                     else {
