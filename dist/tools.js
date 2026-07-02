@@ -215,4 +215,28 @@ exports.agentTools = {
             }
         }
     }),
+    // ── Tool 6: Fetch URL ──
+    fetch_url: (0, ai_1.tool)({
+        description: 'Ambil konten teks atau HTML dari sebuah URL website. Sangat berguna untuk membaca dokumentasi online, API, atau artikel.',
+        parameters: zod_1.z.object({
+            url: zod_1.z.string().describe('URL website yang ingin dibaca (harus diawali http:// atau https://)')
+        }),
+        execute: async ({ url }) => {
+            try {
+                const response = await fetch(url, {
+                    headers: { 'User-Agent': 'TCode-AI-Assistant/1.0' }
+                });
+                if (!response.ok) {
+                    return `❌ Gagal mengakses URL: ${response.status} ${response.statusText}`;
+                }
+                const text = await response.text();
+                // Batasi panjang teks agar tidak menghabiskan token (max 10000 karakter)
+                const trimmed = text.length > 10000 ? text.slice(0, 10000) + '\n... (konten dipotong karena terlalu panjang)' : text;
+                return `✅ Berhasil membaca URL: ${url}\n\n${trimmed}`;
+            }
+            catch (error) {
+                return `❌ Gagal mengakses URL: ${error.message}`;
+            }
+        }
+    }),
 };
