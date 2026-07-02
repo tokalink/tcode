@@ -1,5 +1,5 @@
 {
-  "active_model": "ollama",
+  "active_model": "deepseek-v4-flash",
   "models": {
     "ollama": {
       "provider": "ollama",
