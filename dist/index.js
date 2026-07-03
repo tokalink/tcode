@@ -69,9 +69,11 @@ class Spinner {
         if (this.interval)
             clearInterval(this.interval);
         this.i = 0;
-        this.interval = setInterval(() => {
-            process.stdout.write(`\r${c.cyan}${this.frames[this.i++ % this.frames.length]}${c.reset} ${c.dim}${text}${c.reset}`);
-        }, 80);
+        const render = () => {
+            process.stdout.write(`\r\x1b[K${c.cyan}${this.frames[this.i++ % this.frames.length]}${c.reset} ${c.dim}${text}${c.reset}`);
+        };
+        render();
+        this.interval = setInterval(render, 80);
     }
     stop() {
         if (this.interval) {
@@ -257,12 +259,52 @@ program
         }
         messages.push({ role: 'system', content: systemPrompt });
         let totalTokensUsed = 0;
-        (0, stickybar_1.startStickyBar)();
+        const sessionPath = path.join(os.homedir(), '.tcode', 'session.json');
+        if (fs.existsSync(sessionPath)) {
+            try {
+                const sessionData = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+                if (sessionData && sessionData.messages && sessionData.messages.length > 1) {
+                    const { Select } = require('enquirer');
+                    const prompt = new Select({
+                        name: 'session',
+                        message: 'Ditemukan sesi percakapan sebelumnya. Apa yang ingin Anda lakukan?',
+                        choices: [
+                            { name: 'continue', message: 'Lanjutkan sesi sebelumnya' },
+                            { name: 'new', message: 'Mulai sesi baru' }
+                        ]
+                    });
+                    const answer = await prompt.run();
+                    if (answer === 'continue') {
+                        messages = sessionData.messages;
+                        if (messages.length > 0 && messages[0].role === 'system') {
+                            messages[0] = { role: 'system', content: systemPrompt };
+                        }
+                        else {
+                            messages.unshift({ role: 'system', content: systemPrompt });
+                        }
+                        console.log(`${c.green}✓ Sesi sebelumnya dimuat (${messages.length - 1} pesan).${c.reset}\n`);
+                    }
+                    else {
+                        console.log(`${c.dim}Mulai sesi baru.${c.reset}\n`);
+                    }
+                }
+            }
+            catch (err) {
+                // Ignore parse error
+            }
+        }
         const rl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
             prompt: `${c.cyan}${c.bold}TCode ❯ ${c.reset}`
         });
+        const saveSession = () => {
+            try {
+                fs.writeFileSync(sessionPath, JSON.stringify({ messages }), 'utf8');
+            }
+            catch (err) { }
+        };
+        (0, stickybar_1.startStickyBar)();
         rl.prompt();
         rl.on('line', async (line) => {
             const input = line.trim();
@@ -280,6 +322,7 @@ program
                 const sysMsg = messages.find(m => m.role === 'system');
                 messages = sysMsg ? [sysMsg] : [];
                 totalTokensUsed = 0;
+                saveSession();
                 console.log(`${c.green}✓ Memori direset.${c.reset}\n`);
                 rl.prompt();
                 return;
@@ -323,6 +366,7 @@ program
                 compSpinner.stop();
                 if (wasCompressed) {
                     messages = compressed;
+                    saveSession();
                     console.log(`${c.green}✓ Percakapan diringkas. Sekarang ${messages.length} pesan.${c.reset}\n`);
                 }
                 else {
@@ -405,6 +449,7 @@ program
                     else {
                         messages.push({ role: 'assistant', content: result.text });
                     }
+                    saveSession();
                     const usage = result.usage;
                     if (usage?.totalTokens && !isNaN(usage.totalTokens)) {
                         totalTokensUsed += usage.totalTokens;
@@ -424,11 +469,15 @@ program
                     });
                     let fullResponse = '';
                     let firstChunk = true;
+                    let isFirstOutput = true;
                     for await (const part of result.fullStream) {
                         if (part.type === 'text-delta') {
                             if (firstChunk) {
                                 spinner.stop();
-                                console.log();
+                                if (isFirstOutput) {
+                                    console.log();
+                                    isFirstOutput = false;
+                                }
                                 firstChunk = false;
                             }
                             fullResponse += part.textDelta;
@@ -441,6 +490,9 @@ program
                                 details = args.command.length > 30 ? args.command.slice(0, 30) + '...' : args.command;
                             else if (args.filepath)
                                 details = args.filepath;
+                            if (!firstChunk) {
+                                console.log();
+                            }
                             spinner.start(`⚙️ Menjalankan: ${details}`);
                             firstChunk = true;
                         }
@@ -471,6 +523,7 @@ program
                     else {
                         messages.push({ role: 'assistant', content: fullResponse });
                     }
+                    saveSession();
                     try {
                         const usage = await result.usage;
                         if (usage?.totalTokens && !isNaN(usage.totalTokens)) {
@@ -492,12 +545,15 @@ program
             rl.prompt();
         }).on('close', () => {
             (0, stickybar_1.stopStickyBar)();
-            console.log(`\n${c.cyan}Sampai jumpa! 👋${c.reset}`);
+            console.clear();
+            console.log(`${c.cyan}Sampai jumpa! 👋${c.reset}\n`);
             process.exit(0);
         });
         (0, stickybar_1.startStickyBar)();
         rl.on('SIGINT', () => {
             (0, stickybar_1.stopStickyBar)();
+            console.clear();
+            console.log(`${c.cyan}Sampai jumpa! 👋${c.reset}\n`);
             process.exit(0);
         });
     }
