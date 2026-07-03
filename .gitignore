@@ -3,3 +3,4 @@ node_modules/
 .tcode/
 test_stream.ts
 *.log
+tcode.config.json
