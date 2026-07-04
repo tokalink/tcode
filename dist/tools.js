@@ -40,7 +40,6 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
 const util_1 = require("util");
-const config_1 = require("./config");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 // ── Helper: Format file size ──
 function formatBytes(bytes) {
@@ -132,24 +131,32 @@ exports.agentTools = {
                 function listLevel(dir, depth, prefix) {
                     if (entries.length >= maxEntries)
                         return;
-                    const items = fs.readdirSync(dir).filter(n => !n.startsWith('.') && n !== 'node_modules');
-                    items.sort();
-                    for (const item of items) {
+                    let dirents;
+                    try {
+                        dirents = fs.readdirSync(dir, { withFileTypes: true });
+                    }
+                    catch {
+                        return;
+                    }
+                    dirents.sort((a, b) => a.name.localeCompare(b.name));
+                    for (const dirent of dirents) {
                         if (entries.length >= maxEntries) {
                             entries.push(`${prefix}... (truncated)`);
                             return;
                         }
-                        const fullPath = path.join(dir, item);
+                        if (dirent.name.startsWith('.') || dirent.name === 'node_modules')
+                            continue;
+                        const fullPath = path.join(dir, dirent.name);
                         try {
-                            const stat = fs.statSync(fullPath);
-                            if (stat.isDirectory()) {
-                                entries.push(`${prefix}📁 ${item}/`);
+                            if (dirent.isDirectory()) {
+                                entries.push(`${prefix}📁 ${dirent.name}/`);
                                 if (recursive && depth < 3) {
                                     listLevel(fullPath, depth + 1, prefix + '  ');
                                 }
                             }
                             else {
-                                entries.push(`${prefix}📄 ${item} (${formatBytes(stat.size)})`);
+                                const stat = fs.statSync(fullPath);
+                                entries.push(`${prefix}📄 ${dirent.name} (${formatBytes(stat.size)})`);
                             }
                         }
                         catch { /* skip inaccessible */ }
@@ -197,10 +204,9 @@ exports.agentTools = {
         }),
         execute: async ({ topic, content }) => {
             try {
-                const config = (0, config_1.loadConfig)();
-                const baseDir = config.knowledge_path
-                    ? path.resolve(process.cwd(), config.knowledge_path)
-                    : path.join(process.cwd(), '.tcode', 'knowledge');
+                const os = require('os');
+                // Default ke .tcode/knowledge di home directory (global knowledge)
+                const baseDir = path.join(os.homedir(), '.tcode', 'knowledge');
                 if (!fs.existsSync(baseDir)) {
                     fs.mkdirSync(baseDir, { recursive: true });
                 }

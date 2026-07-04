@@ -3,36 +3,28 @@ import * as os from 'os';
 let interval: NodeJS.Timeout | null = null;
 let isEnabled = false;
 let lastTokenStats = ' 📊 Token: 0 in → 0 out │ Σ 0 │ ⏱ 0ms │ 💬 0 msg ';
+let contextLimit = '?K';
+let currentContextUsed = '?';
+let resizeHandler: (() => void) | null = null;
 
 export function setTokenStats(stats: string) {
   lastTokenStats = ' ' + stats + ' ';
 }
 
-function formatMem(bytes: number) {
-  return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+export function setContextLimit(limit: string) {
+  contextLimit = limit;
 }
 
-function getCpuUsage(): Promise<number> {
-  const cpus1 = os.cpus();
-  let idle1 = 0, total1 = 0;
-  for (const cpu of cpus1) {
-    for (const type in cpu.times) total1 += cpu.times[type as keyof typeof cpu.times];
-    idle1 += cpu.times.idle;
+export function setContextUsed(used: number) {
+  if (used > 1000) {
+    currentContextUsed = (used / 1000).toFixed(1) + 'K';
+  } else {
+    currentContextUsed = used.toString();
   }
-  
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const cpus2 = os.cpus();
-      let idle2 = 0, total2 = 0;
-      for (const cpu of cpus2) {
-        for (const type in cpu.times) total2 += cpu.times[type as keyof typeof cpu.times];
-        idle2 += cpu.times.idle;
-      }
-      const idleDiff = idle2 - idle1;
-      const totalDiff = total2 - total1;
-      resolve(totalDiff === 0 ? 0 : 100 * (1 - idleDiff / totalDiff));
-    }, 100);
-  });
+}
+
+function formatMem(bytes: number) {
+  return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
 }
 
 export function startStickyBar() {
@@ -40,16 +32,12 @@ export function startStickyBar() {
   if (isEnabled) return;
   isEnabled = true;
 
-  const update = async () => {
+  const update = () => {
     if (!isEnabled || !process.stdout.isTTY) return;
     
     const rows = process.stdout.rows;
     const cols = process.stdout.columns;
     if (!rows || !cols) return;
-
-    // CPU Model
-    const cpus = os.cpus();
-    const cpuModel = cpus.length > 0 ? cpus[0].model.trim() : 'Unknown CPU';
     
     // RAM
     const totalRam = os.totalmem();
@@ -57,10 +45,7 @@ export function startStickyBar() {
     const usedRam = totalRam - freeRam;
     const ramStr = `${formatMem(usedRam)} / ${formatMem(totalRam)}`;
 
-    // CPU Load
-    const load = await getCpuUsage();
-
-    const statusText = ` 💻 CPU: ${cpuModel} | ⚙️ Load: ${load.toFixed(1)}% | 🐏 RAM: ${ramStr} `;
+    const statusText = ` 🗜️ Context Used: ${currentContextUsed} / ${contextLimit} | 🐏 RAM: ${ramStr} `;
     
     // Gabungkan menjadi 1 baris dan truncate sesuai lebar kolom
     const combined = `${statusText.trim()} │ ${lastTokenStats.trim()}`;
@@ -79,10 +64,11 @@ export function startStickyBar() {
     }
   };
 
+  resizeHandler = setupRegion;
   setupRegion();
-  process.stdout.on('resize', setupRegion);
+  process.stdout.on('resize', resizeHandler);
 
-  interval = setInterval(update, 1000);
+  interval = setInterval(update, 3000); // 3 detik cukup untuk update RAM
   update();
 }
 
@@ -91,6 +77,10 @@ export function stopStickyBar() {
   if (interval) {
     clearInterval(interval);
     interval = null;
+  }
+  if (resizeHandler) {
+    process.stdout.removeListener('resize', resizeHandler);
+    resizeHandler = null;
   }
   if (process.stdout.isTTY && process.stdout.rows) {
     process.stdout.write(`\x1b[1;${process.stdout.rows}r`); // Reset scrolling region
